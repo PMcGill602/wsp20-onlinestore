@@ -193,7 +193,7 @@ function authAndRedirectSignIn (req, res, next) {
         res.redirect('/b/signin')
     } else {
         req.user = user
-        next()
+        return next()
     }
 }
 
@@ -222,7 +222,7 @@ function authSysAdmin(req, res, next) {
     if(!user || !user.email || user.email !== Constants.SYSADMINEMAIL) {
         res.send('<h1>System Admin Page: Access Denied</h1>')
     } else {
-        next()
+        return next()
     }
 }
 
