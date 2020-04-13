@@ -7,6 +7,8 @@ admin.initializeApp({
   databaseURL: "https://patrickm-wsp20.firebaseio.com"
 });
 
+const Constants = require('./myconstants.js')
+
 async function createUser(req,res) {
     const email = req.body.email
     const password = req.body.password
@@ -33,7 +35,43 @@ async function listUsers(req, res) {
     }
 }
 
+async function verifyIdToken(idToken) {
+    try {
+        const decodedIdToken = await admin.auth().verifyIdToken(idToken)
+        return decodedIdToken
+    } catch (e) {
+        return null
+    }
+}
+
+async function getOrderHistory(decodedIdToken) {
+    try {
+        const collection = admin.firestore().collection(Constants.COLL_ORDERS)
+        let orders = []
+        const snapshot = await collection.where("uid", "==", decodedIdToken.uid).orderBy("timestamp").get()
+        snapshot.forEach(doc => {
+            orders.push(doc.data())
+        })
+        return orders
+    } catch (e) {
+        return null
+    }
+}
+
+async function checkOut(data) {
+    data.timestamp = admin.firestore.Timestamp.fromDate(new Date())
+    try {
+        const collection = admin.firestore().collection(Constants.COLL_ORDERS)
+        await collection.doc().set(data)
+    } catch (e) {
+        throw e
+    }
+}
+
 module.exports = {
     createUser,
-    listUsers
+    listUsers,
+    verifyIdToken,
+    getOrderHistory,
+    checkOut
 }
