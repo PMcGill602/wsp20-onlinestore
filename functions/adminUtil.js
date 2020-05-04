@@ -66,7 +66,7 @@ async function checkOut(data) {
         const products = admin.firestore().collection(Constants.COLL_PRODUCTS)
         await orders.doc().set(data)
         for (const item of data.cart) {
-            const snapshot = admin.firestore().collection(Constants.COLL_PRODUCTS)
+            const snapshot = await admin.firestore().collection(Constants.COLL_PRODUCTS)
                 .where("name", '==', item.product.name)
                 .get()
             snapshot.forEach(doc => {
@@ -84,7 +84,7 @@ async function checkOut(data) {
 async function checkQuantity(cart) {
     var count = 0
     for (const item of cart) {
-        const snapshot = admin.firestore().collection(Constants.COLL_PRODUCTS)
+        const snapshot = await admin.firestore().collection(Constants.COLL_PRODUCTS)
             .where("name", '==', item.product.name)
             .get()
         snapshot.forEach(doc => {
