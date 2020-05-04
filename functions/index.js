@@ -55,17 +55,25 @@ function frontendHandler(req, res) {
  app.get('/',  auth, async(req, res) => {
     const cartCount = req.session.cart ? req.session.cart.length : 0
     const coll = firebase.firestore().collection(Constants.COLL_PRODUCTS)
+    let lastIndex
+    let nextDisabled = false
+    let prevDisabled = true
     try {
         let products = []
-        const snapshot = await coll.orderBy("name").get()
+        const snapshot = await coll
+            .orderBy("name")
+            .limit(10)
+            .get()
         snapshot.forEach(doc => {
             products.push({id: doc.id, data: doc.data()})
         })
+        lastIndex = snapshot.docs.length - 1
+        
         res.setHeader('Cache-Control', 'private')
-        res.render('storefront.ejs', {error: false, products, user: req.decodedIdToken, cartCount})
+        res.render('storefront.ejs', {error: false, products, user: req.decodedIdToken, cartCount, lastIndex, prevDisabled, nextDisabled})
     } catch (e) {
         res.setHeader('Cache-Control', 'private')
-        res.render('storefront.ejs', {error: e, user: req.decodedIdToken, cartCount})
+        res.render('storefront.ejs', {error: e, user: req.decodedIdToken, cartCount, lastIndex, prevDisabled, nextDisabled})
     }
 })
 
@@ -179,22 +187,29 @@ app.post('/b/checkout', authAndRedirectSignIn, async (req,res) => {
         res.setHeader('Cache-Control', 'private')
         return res.send('Shopping Cart is Empty')
     }
+    let cart = req.session.cart
     const data = {
         uid: req.decodedIdToken.uid,
-        // timestamp: firebase.firestore.Timestamp.fromDate(new Date()),
+            // timestamp: firebase.firestore.Timestamp.fromDate(new Date()),
         cart: req.session.cart
     }
 
     try {
+        var available = await adminUtil.checkQuantity(cart)
+        if (!available) {
+            res.setHeader('Cache-Control', 'private')
+            return res.send('Sorry, one or more of the items you requested are no longer in stock')
+        }
         await adminUtil.checkOut(data)
         req.session.cart = null
         res.setHeader('Cache-Control', 'private')
         return res.render('shoppingcart.ejs', {message: 'Checked Out Successfully', cart : new ShoppingCart(), user: req.decodedIdToken, cartCount: 0})
     } catch (e) {
-        const cart = ShoppingCart.deserialize(req.session.cart)
-        res.setHeader('Cache-Control', 'private')
-        return res.render('shoppingcart.ejs', {message: 'Checkout Failed. Try Again Later', cart, user: req.decodedIdToken, cartCount: cart.contents.length})
+         const cart = ShoppingCart.deserialize(req.session.cart)
+         res.setHeader('Cache-Control', 'private')
+        return res.render('shoppingcart.ejs', {message: 'Checkout Failed. Try Again Later' + e, cart, user: req.decodedIdToken, cartCount: cart.contents.length})
     }
+    
 
 })
 
@@ -208,6 +223,78 @@ app.get('/b/orderhistory', authAndRedirectSignIn, async (req,res) => {
         res.setHeader('Cache-Control', 'private')
         res.send('<h1>Order History Error</h1>')
     }
+})
+
+app.post('/b/paginateNext', async (req,res) =>  {
+    const lastId = req.body.lastId
+    const cartCount = req.session.cart ? req.session.cart.length : 0
+    let products = []
+    let lastIndex
+    let nextDisabled = false
+    let prevDisabled = false
+    try {
+            const coll = firebase.firestore().collection(Constants.COLL_PRODUCTS)
+            const last = await coll.doc(lastId).get()
+            const next = await coll
+                .orderBy("name")
+                .startAfter(last.data().name)
+                .limit(10)
+                .get()
+            next.forEach(doc => {
+                products.push({id: doc.id, data: doc.data()})
+            })
+            const checkIfLast = await coll
+                .orderBy("name", 'desc')
+                .limit(1)
+                .get()
+            lastIndex = next.docs.length - 1
+            if (lastIndex < 9 || checkIfLast.docs[0].id === products[lastIndex].id) {
+                nextDisabled = true
+            }
+            res.setHeader('Cache-Control', 'private')
+            res.render('storefront.ejs', {error: false, user: req.decodedIdToken, cartCount, products, lastIndex, prevDisabled, nextDisabled})
+        } catch (e) {
+            console.log("========", e)
+        res.setHeader('Cache-Control', 'private')
+        res.send('<h1>Pagination Error</h1>')
+        }
+
+})
+
+app.post('/b/paginatePrev', async (req,res) =>  {
+    const firstId = req.body.firstId
+    const cartCount = req.session.cart ? req.session.cart.length : 0
+    let products = []
+    let prevDisabled = false
+    let nextDisabled = false
+    try {
+            const coll = firebase.firestore().collection(Constants.COLL_PRODUCTS)
+            const first = await coll.doc(firstId).get()
+            const prev = await coll
+                .orderBy("name")
+                .endBefore(first.data().name)
+                .limitToLast(10)
+                .get()
+            prev.forEach(doc => {
+                products.push({id: doc.id, data: doc.data()})
+            })
+            const checkIfFirst = await coll
+                .orderBy("name")
+                .limit(1)
+                .get()
+            lastIndex = prev.docs.length - 1
+            if(checkIfFirst.docs[0].id === products[0].id) {
+                prevDisabled = true
+            }
+            
+            res.setHeader('Cache-Control', 'private')
+            res.render('storefront.ejs', {error: false, user: req.decodedIdToken, cartCount, products, lastIndex, prevDisabled, nextDisabled})
+        } catch (e) {
+            console.log("========", e)
+        res.setHeader('Cache-Control', 'private')
+        res.send('<h1>Pagination Error</h1>')
+        }
+
 })
 
 //middleware

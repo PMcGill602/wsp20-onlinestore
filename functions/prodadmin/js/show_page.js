@@ -16,8 +16,8 @@ async function show_page_secured() {
         products = []
         const snapshot = await firebase.firestore().collection(COLLECTION).get()
         snapshot.forEach(doc => {
-            const { name, summary, price, image, image_url } = doc.data()
-            const p = { docId: doc.id, name, summary, price, image, image_url }
+            const { name, summary, price, quantity, image, image_url } = doc.data()
+            const p = { docId: doc.id, name, summary, price, quantity, image, image_url }
             products.push(p)
         })
     } catch (e) {
@@ -40,7 +40,7 @@ async function show_page_secured() {
             <img src="${p.image_url}" class="card-img-top">
             <div class="card-body">
                 <h5 class="card-title">${p.name}</h5>
-                <p class="card-text">${p.price}<br>${p.summary}</p>
+                <p class="card-text">${p.price}<br>${p.summary}<br>In stock: ${p.quantity}</p>
                 <button class="btn btn-primary" type="button" onclick="editProduct(${index})">Edit</button>
                 <button class="btn btn-danger" type="button" onclick="deleteProduct(${index})">Delete</button>
             </div>
@@ -71,6 +71,10 @@ function editProduct(index) {
         Price: <input class="form-control" type="text" id="price" value="${p.price}" />
         <p id="price_error" style="color:red;" />
     </div>
+    <div class="form-group">
+        Quantity: <input class="form-control" type="text" id="quantity" value="${p.quantity}" />
+        <p id="quantity_error" style="color:red;" />
+    </div>
     Current Image:<br>
     <img src="${p.image_url}"><br>
     <div class="form-group">
@@ -91,15 +95,18 @@ async function update(index) {
     const newName = document.getElementById('name').value
     const newSummary = document.getElementById('summary').value
     const newPrice = document.getElementById('price').value
+    const newQuantity = document.getElementById('quantity').value
 
     const nameErrorTag = document.getElementById('name_error')
     const summaryErrorTag = document.getElementById('summary_error')
     const priceErrorTag = document.getElementById('price_error')
+    const quantityErrorTag = document.getElementById('quantity_error')
     nameErrorTag.innerHTML = validate_name(newName)
     summaryErrorTag.innerHTML = validate_summary(newSummary)
     priceErrorTag.innerHTML = validate_price(newPrice)
+    quantityErrorTag.innerHTML = validate_quantity(newQuantity)
 
-    if(nameErrorTag.innerHTML || summaryErrorTag.innerHTML || priceErrorTag.innerHTML) {
+    if(nameErrorTag.innerHTML || summaryErrorTag.innerHTML || priceErrorTag.innerHTML || quantityErrorTag.innerHTML) {
         return
     }
 
@@ -115,6 +122,10 @@ async function update(index) {
     }
     if (p.price !== newPrice) {
         newInfo.price = Number(Number(newPrice).toFixed(2))
+        updated = true
+    }
+    if (p.quantity !== newQuantity) {
+        newInfo.quantity = Number(Number(newQuantity).toFixed(2))
         updated = true
     }
     if (imageFile2Update) {

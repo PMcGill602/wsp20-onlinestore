@@ -1,3 +1,4 @@
+const functions = require('firebase-functions');
 var admin = require("firebase-admin");
 
 var serviceAccount = require("./patrickm-wsp20-firebase-adminsdk-kpneu-982b99a42e.json");
@@ -61,10 +62,39 @@ async function getOrderHistory(decodedIdToken) {
 async function checkOut(data) {
     data.timestamp = admin.firestore.Timestamp.fromDate(new Date())
     try {
-        const collection = admin.firestore().collection(Constants.COLL_ORDERS)
-        await collection.doc().set(data)
+        const orders = admin.firestore().collection(Constants.COLL_ORDERS)
+        const products = admin.firestore().collection(Constants.COLL_PRODUCTS)
+        await orders.doc().set(data)
+        for (const item of data.cart) {
+            const snapshot = admin.firestore().collection(Constants.COLL_PRODUCTS)
+                .where("name", '==', item.product.name)
+                .get()
+            snapshot.forEach(doc => {
+                var newQuantity = doc.data().quantity - item.qty
+                products.doc(doc.id).set({
+                    quantity: newQuantity
+                }, {merge: true});
+            })
+        }
     } catch (e) {
         throw e
+    }
+}
+
+async function checkQuantity(cart) {
+    var count = 0
+    for (const item of cart) {
+        const snapshot = admin.firestore().collection(Constants.COLL_PRODUCTS)
+            .where("name", '==', item.product.name)
+            .get()
+        snapshot.forEach(doc => {
+            if(doc.data().quantity < item.qty) {
+                return false
+            } else
+            count++
+        })
+        if (count >= cart.length)
+            return true
     }
 }
 
@@ -73,5 +103,6 @@ module.exports = {
     listUsers,
     verifyIdToken,
     getOrderHistory,
-    checkOut
+    checkOut,
+    checkQuantity
 }

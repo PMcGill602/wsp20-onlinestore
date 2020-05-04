@@ -22,16 +22,55 @@
                 <img src="<%= p.data.image_url %>" class="card-img-top">
                 <div class="card-body">
                 <h5 class="card-title"><%= p.data.name %></h5>
-                <p class="card-text">$(<%= p.data.price %>)<br><%= p.data.summary %></p>
+                <p class="card-text">$(<%= p.data.price %>)<br><%= p.data.summary %><br>
+                 <% if (p.data.quantity == 0) { %>
+                  Out of stock
+                 <% } else { %>
+                  In Stock: <%= p.data.quantity %>
+                 <% } %>
+                </p>
                 <form action="/b/add2cart" method="POST">
                   <input type="hidden" name="docId" value="<%= p.id %>">
-                  <button type="submit" class="btn btn-primary">Add to Cart</button>
+                  <% if (p.data.quantity == 0) { %>
+                    <button type="submit" class="btn btn-primary" disabled>Add to Cart</button>
+                   <% } else { %>
+                    <button type="submit" class="btn btn-primary">Add to Cart</button>
+                   <% } %>
                 </form>
                 </div>
             </div>
         <% } %>
     <% } %>
+    <br><br>
+    <div class="container">
+      <div class="row">
+        <div class="col">
+          <form action = "/b/paginatePrev" method="POST">
+            <% if (prevDisabled) { %>
+              <input type="hidden" name="firstId" value="<%= null %>">
+              <button type="submit" class="btn btn-primary" disabled>Prev</a>
+             <% } else { %>
+              <input type="hidden" name="firstId" value="<%= products[0].id %>">
+              <button type="submit" class="btn btn-primary">Prev</a>
+             <% } %>
+            
+          </form>
+        </div>
+        <div class="col">
+          <form action = "/b/paginateNext" method="POST">
+            <% if (nextDisabled) { %>
+              <input type="hidden" name="lastId" value="<%= null %>">
+              <button type="submit" class="btn btn-primary" disabled>Next</a>
+             <% } else { %>
+              <input type="hidden" name="lastId" value="<%= products[lastIndex].id %>">
+              <button type="submit" class="btn btn-primary">Next</a>
+             <% } %>
+            
+          </form>
+        </div>
+      </div>
+    </div>
 
-    %<- include('partials/scripts.ejs') %>
+    <%- include('partials/scripts.ejs') %>
   </body>
 </html>

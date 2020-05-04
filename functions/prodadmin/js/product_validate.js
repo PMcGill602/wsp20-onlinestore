@@ -20,3 +20,11 @@ function validate_price(price) {
     else
         return null
 }
+
+function validate_quantity(quantity) {
+    let quantityNo = Number(quantity)
+    if (!Number.isInteger(quantityNo))
+        return `Error: Invalid quantity value ${quantity}`
+    else
+        return null
+}
